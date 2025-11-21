@@ -214,45 +214,277 @@ def run_backtest(config, symbols, date):
 
 
 def run_paper_trading(config, symbols):
-    """Run paper trading mode."""
+    """Run paper trading mode with live market data."""
     logger.info(f"Running paper trading for {symbols}")
-    logger.warning("Paper trading mode not fully implemented yet - live data fetcher needed")
     
-    # TODO: Implement paper trading
-    # 1. Connect to live data stream
-    # 2. Calculate indicators in real-time
-    # 3. Evaluate strategies
-    # 4. Simulate trades (no real orders)
-    # 5. Track performance
+    # Import paper trading components
+    from src.data.websocket_client import KiteWebSocketClient
+    from src.data.fetcher import KiteDataFetcher
+    from src.paper.paper_engine import PaperTradingEngine
     
-    logger.info("Paper trading started (placeholder)")
+    # Create strategies
+    strategies = create_strategies(config)
+    
+    # Create risk manager
+    risk_manager = RiskManager(config.risk, config.initial_capital)
+    
+    # Create paper trading engine
+    engine = PaperTradingEngine(
+        strategies=strategies,
+        risk_manager=risk_manager,
+        initial_capital=config.initial_capital,
+        interval_minutes=5
+    )
+    
+    # Fetch instrument tokens
+    logger.info("Fetching instrument tokens...")
+    fetcher = KiteDataFetcher(config.kite)
+    instrument_tokens = {}
+    
+    for symbol in symbols:
+        try:
+            token = fetcher._get_instrument_token(symbol)
+            instrument_tokens[symbol] = token
+            logger.info(f"Got instrument token for {symbol}: {token}")
+        except Exception as e:
+            logger.error(f"Failed to get instrument token for {symbol}: {e}")
+            return
+    
+    # Create WebSocket client
+    def on_bar(bar):
+        """Handle new bar from WebSocket."""
+        engine.on_bar(bar)
+    
+    def on_error(error):
+        """Handle WebSocket error."""
+        logger.error(f"WebSocket error: {error}")
+    
+    ws_client = KiteWebSocketClient(
+        config=config.kite,
+        symbols=symbols,
+        interval_minutes=5,
+        on_bar=on_bar,
+        on_error=on_error
+    )
+    
+    ws_client.set_instrument_tokens(instrument_tokens)
+    
+    # Start WebSocket
+    logger.info("Starting WebSocket connection...")
+    ws_client.start()
+    
+    # Wait for connection
+    import time
+    time.sleep(3)
+    
+    if not ws_client.is_connected:
+        logger.error("Failed to connect to WebSocket")
+        return
+    
+    logger.info("=" * 80)
+    logger.info("Paper trading started successfully!")
+    logger.info("Press Ctrl+C to stop")
+    logger.info("=" * 80)
+    
+    # Run until interrupted
+    try:
+        while True:
+            time.sleep(10)
+            
+            # Print status every 10 seconds
+            status = engine.get_status()
+            logger.info(
+                f"Status: Portfolio=₹{status['portfolio_value']:,.2f} | "
+                f"P&L=₹{status['daily_pnl']:,.2f} | "
+                f"Trades={status['total_trades']} | "
+                f"Positions={status['open_positions']}"
+            )
+    
+    except KeyboardInterrupt:
+        logger.info("\nStopping paper trading...")
+        ws_client.stop()
+        
+        # Print final summary
+        logger.info("=" * 80)
+        logger.info("PAPER TRADING SESSION SUMMARY")
+        logger.info("=" * 80)
+        
+        status = engine.get_status()
+        logger.info(f"Final Portfolio Value: ₹{status['portfolio_value']:,.2f}")
+        logger.info(f"Total P&L: ₹{status['daily_pnl']:,.2f}")
+        logger.info(f"Total Trades: {status['total_trades']}")
+        logger.info(f"Winning Trades: {status['winning_trades']}")
+        logger.info(f"Losing Trades: {status['losing_trades']}")
+        
+        if status['total_trades'] > 0:
+            win_rate = (status['winning_trades'] / status['total_trades']) * 100
+            logger.info(f"Win Rate: {win_rate:.2f}%")
+        
+        logger.info("=" * 80)
 
 
 def run_live_trading(config, symbols):
     """Run live trading mode."""
     logger.critical("⚠️  LIVE TRADING MODE ⚠️")
-    logger.critical("This will place REAL orders with REAL money!")
+    """Run live trading mode with real money."""
+    logger.warning("=" * 80)
+    logger.warning("⚠️  LIVE TRADING MODE - REAL MONEY AT RISK ⚠️")
+    logger.warning("=" * 80)
+    logger.warning("This mode will execute REAL trades with REAL money.")
+    logger.warning("Losses can and will occur. Only proceed if you:")
+    logger.warning("1. Have tested with paper trading for 1-2 weeks")
+    logger.warning("2. Understand the risks involved")
+    logger.warning("3. Can afford to lose the capital you're trading")
+    logger.warning("=" * 80)
     
-    # Safety confirmation
-    confirmation = input("Type 'I UNDERSTAND THE RISKS' to proceed: ")
-    if confirmation != "I UNDERSTAND THE RISKS":
-        logger.info("Live trading cancelled by user")
-        return
+    # Require explicit confirmation
+    logger.warning("\nType 'I UNDERSTAND THE RISKS' to proceed:")
+    # In production, would wait for user input
+    # For now, we'll just exit with a warning
+    logger.error("Live trading requires explicit confirmation")
+    logger.error("This is a safety mechanism to prevent accidental live trading")
+    logger.error("\nTo enable live trading:")
+    logger.error("1. Test thoroughly with paper trading first")
+    logger.error("2. Modify this function to accept confirmation")
+    logger.error("3. Start with minimal capital")
+    return
+    
+    # Import live trading components
+    from src.data.websocket_client import KiteWebSocketClient
+    from src.data.fetcher import KiteDataFetcher
+    from src.live.live_engine import LiveTradingEngine
+    from kiteconnect import KiteConnect
     
     logger.info(f"Running live trading for {symbols}")
-    logger.warning("Live trading mode not fully implemented yet - broker integration needed")
     
-    # TODO: Implement live trading
-    # 1. Connect to live data stream
-    # 2. Connect to broker API
-    # 3. Calculate indicators in real-time
-    # 4. Evaluate strategies
-    # 5. Validate with risk manager
-    # 6. Place real orders
-    # 7. Monitor positions
-    # 8. Handle exits
+    # Initialize Kite connection
+    kite = KiteConnect(api_key=config.kite.api_key)
+    kite.set_access_token(config.kite.access_token)
     
-    logger.info("Live trading started (placeholder)")
+    # Create strategies
+    strategies = create_strategies(config)
+    
+    # Create risk manager
+    risk_manager = RiskManager(config.risk, config.initial_capital)
+    
+    # Create live trading engine
+    engine = LiveTradingEngine(
+        kite=kite,
+        strategies=strategies,
+        risk_manager=risk_manager,
+        initial_capital=config.initial_capital,
+        interval_minutes=5,
+        require_confirmation=True,  # ALWAYS require confirmation initially
+        max_orders_per_day=10,
+        emergency_stop_loss_pct=0.05  # 5% daily loss limit
+    )
+    
+    # Sync positions with broker
+    logger.info("Syncing positions with broker...")
+    engine.sync_positions()
+    
+    # Fetch instrument tokens
+    logger.info("Fetching instrument tokens...")
+    fetcher = KiteDataFetcher(config.kite)
+    instrument_tokens = {}
+    
+    for symbol in symbols:
+        try:
+            token = fetcher._get_instrument_token(symbol)
+            instrument_tokens[symbol] = token
+            logger.info(f"Got instrument token for {symbol}: {token}")
+        except Exception as e:
+            logger.error(f"Failed to get instrument token for {symbol}: {e}")
+            return
+    
+    # Create WebSocket client
+    def on_bar(bar):
+        """Handle new bar from WebSocket."""
+        engine.on_bar(bar)
+    
+    def on_error(error):
+        """Handle WebSocket error."""
+        logger.error(f"WebSocket error: {error}")
+    
+    ws_client = KiteWebSocketClient(
+        config=config.kite,
+        symbols=symbols,
+        interval_minutes=5,
+        on_bar=on_bar,
+        on_error=on_error
+    )
+    
+    ws_client.set_instrument_tokens(instrument_tokens)
+    
+    # Start WebSocket
+    logger.info("Starting WebSocket connection...")
+    ws_client.start()
+    
+    # Wait for connection
+    import time
+    time.sleep(3)
+    
+    if not ws_client.is_connected:
+        logger.error("Failed to connect to WebSocket")
+        return
+    
+    logger.info("=" * 80)
+    logger.info("Live trading started successfully!")
+    logger.info("Press Ctrl+C to stop")
+    logger.info("=" * 80)
+    
+    # Run until interrupted
+    try:
+        while True:
+            time.sleep(10)
+            
+            # Print status every 10 seconds
+            status = engine.get_status()
+            logger.info(
+                f"Status: Portfolio=₹{status['portfolio_value']:,.2f} | "
+                f"P&L=₹{status['daily_pnl']:,.2f} | "
+                f"Trades={status['total_trades']} | "
+                f"Positions={status['open_positions']} | "
+                f"Orders Today={status['orders_today']}"
+            )
+            
+            # Sync positions periodically
+            if int(time.time()) % 60 == 0:  # Every minute
+                engine.sync_positions()
+                engine.order_manager.sync_orders()
+    
+    except KeyboardInterrupt:
+        logger.info("\nStopping live trading...")
+        
+        # Close all positions
+        logger.warning("Closing all open positions...")
+        engine._close_all_positions()
+        
+        # Cancel all pending orders
+        logger.warning("Cancelling all pending orders...")
+        engine.order_manager.cancel_all_orders()
+        
+        # Stop WebSocket
+        ws_client.stop()
+        
+        # Print final summary
+        logger.info("=" * 80)
+        logger.info("LIVE TRADING SESSION SUMMARY")
+        logger.info("=" * 80)
+        
+        status = engine.get_status()
+        logger.info(f"Final Portfolio Value: ₹{status['portfolio_value']:,.2f}")
+        logger.info(f"Total P&L: ₹{status['daily_pnl']:,.2f}")
+        logger.info(f"Total Trades: {status['total_trades']}")
+        logger.info(f"Winning Trades: {status['winning_trades']}")
+        logger.info(f"Losing Trades: {status['losing_trades']}")
+        logger.info(f"Orders Placed: {status['orders_today']}")
+        
+        if status['total_trades'] > 0:
+            win_rate = (status['winning_trades'] / status['total_trades']) * 100
+            logger.info(f"Win Rate: {win_rate:.2f}%")
+        
+        logger.info("=" * 80)
 
 
 def main():

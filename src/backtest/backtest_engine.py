@@ -91,7 +91,7 @@ class BacktestEngine:
         # Convert bars to DataFrames and calculate indicators
         for symbol, bars in historical_data.items():
             df = self._bars_to_dataframe(bars)
-            df = calculate_all_indicators(df, interval_minutes=self.interval_minutes)
+            df = calculate_all_indicators(df)
             self.symbol_data[symbol] = df
             logger.info(f"Loaded {len(df)} bars for {symbol}")
         
@@ -145,6 +145,10 @@ class BacktestEngine:
         
         df = pd.DataFrame(data)
         df = df.sort_values('timestamp').reset_index(drop=True)
+        # Set timestamp as index for VWAP calculation
+        df = df.set_index('timestamp')
+        # Keep timestamp as column too for easier access
+        df['timestamp'] = df.index
         return df
     
     def _process_bar(self, timestamp: datetime) -> None:
@@ -170,7 +174,19 @@ class BacktestEngine:
         self.portfolio.update_unrealized_pnl()
         
         # Check if we can take new positions (risk limits)
-        if not self.risk_manager.can_trade(self.portfolio):
+        # Check kill switch
+        if self.risk_manager.kill_switch_active:
+            return
+        
+        # Check daily loss limit
+        daily_loss_limit = self.risk_manager.initial_capital * self.risk_manager.config.max_daily_loss
+        if self.portfolio.daily_pnl < -daily_loss_limit:
+            logger.warning(f"Daily loss limit reached: ₹{self.portfolio.daily_pnl:,.2f}")
+            return
+        
+        # Check max losing trades
+        if self.portfolio.daily_losing_trades >= self.risk_manager.config.max_losing_trades_per_day:
+            logger.warning(f"Max losing trades per day reached: {self.portfolio.daily_losing_trades}")
             return
         
         # Evaluate strategies for each symbol
@@ -193,6 +209,9 @@ class BacktestEngine:
                     regime=self.current_regime,
                     sentiment=self.current_sentiment.get(symbol)
                 )
+                
+                # Update instruction with correct symbol
+                instruction.symbol = symbol
                 
                 # Process entry signals
                 if instruction.signal == StrategySignal.ENTRY_LONG:
@@ -271,18 +290,27 @@ class BacktestEngine:
         entry_price = current_bar['close']
         
         # Validate with risk manager
-        if not self.risk_manager.validate_trade(
+        is_allowed, reason = self.risk_manager.validate_trade(
             instruction,
             self.portfolio,
-            entry_price
-        ):
-            logger.debug(f"Trade rejected by risk manager for {symbol}")
+            timestamp
+        )
+        
+        if not is_allowed:
+            logger.debug(f"Trade rejected by risk manager for {symbol}: {reason}")
+            return
+        
+        # Calculate position size based on risk management
+        quantity = self.risk_manager.calculate_position_size(instruction, self.portfolio)
+        
+        if quantity == 0:
+            logger.debug(f"Position size calculated as 0 for {symbol}, skipping trade")
             return
         
         # Create position
         position = Position(
             symbol=symbol,
-            quantity=instruction.quantity,
+            quantity=quantity,
             average_price=entry_price,
             current_price=entry_price,
             stop_loss=instruction.stop_loss,
@@ -293,12 +321,12 @@ class BacktestEngine:
         )
         
         # Update portfolio
-        cost = entry_price * instruction.quantity
+        cost = entry_price * quantity
         self.portfolio.cash -= cost
         self.portfolio.add_position(position)
         
         logger.info(
-            f"ENTRY: {symbol} | Qty: {instruction.quantity} | "
+            f"ENTRY: {symbol} | Qty: {quantity} | "
             f"Price: ₹{entry_price:.2f} | SL: ₹{instruction.stop_loss:.2f} | "
             f"Target: ₹{instruction.target:.2f} | Strategy: {instruction.strategy_name}"
         )
