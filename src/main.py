@@ -105,17 +105,112 @@ def create_strategies(config):
 
 def run_backtest(config, symbols, date):
     """Run backtest mode."""
+    from datetime import datetime, timedelta
+    from src.data.fetcher import KiteDataFetcher
+    from src.backtest.backtest_engine import BacktestEngine
+    from src.backtest.performance import PerformanceMetrics
+    from src.backtest.report import BacktestReport
+    
     logger.info(f"Running backtest for {symbols} on {date}")
-    logger.warning("Backtest mode not fully implemented yet - data fetcher needed")
     
-    # TODO: Implement backtest
-    # 1. Fetch historical data for symbols and date
-    # 2. Calculate indicators
-    # 3. Evaluate strategies
-    # 4. Simulate trades
-    # 5. Generate report
+    # Parse date
+    try:
+        backtest_date = datetime.strptime(date, "%Y-%m-%d")
+    except ValueError:
+        logger.error(f"Invalid date format: {date}. Expected YYYY-MM-DD")
+        return
     
-    logger.info("Backtest completed (placeholder)")
+    # Initialize data fetcher
+    try:
+        data_fetcher = KiteDataFetcher(config.kite, cache_dir="data/cache")
+    except Exception as e:
+        logger.error(f"Failed to initialize data fetcher: {e}")
+        logger.error("Please check your Kite API credentials in .env file")
+        return
+    
+    # Fetch historical data for each symbol
+    historical_data = {}
+    
+    # For intraday backtest, fetch data for the single day
+    # Add some buffer to ensure we have enough data for indicators
+    from_date = backtest_date - timedelta(days=5)  # Get a few days before for indicator warmup
+    to_date = backtest_date + timedelta(days=1)
+    
+    for symbol in symbols:
+        try:
+            logger.info(f"Fetching data for {symbol}...")
+            bars = data_fetcher.fetch_historical_data(
+                symbol=symbol,
+                from_date=from_date,
+                to_date=to_date,
+                interval=config.data.interval,
+                exchange="NSE"
+            )
+            
+            if not bars:
+                logger.warning(f"No data available for {symbol}")
+                continue
+            
+            # Filter to only the backtest date for actual trading
+            # but keep previous days for indicator calculation
+            historical_data[symbol] = bars
+            logger.info(f"Loaded {len(bars)} bars for {symbol}")
+            
+        except Exception as e:
+            logger.error(f"Error fetching data for {symbol}: {e}")
+            continue
+    
+    if not historical_data:
+        logger.error("No data available for backtest")
+        return
+    
+    # Create strategies (already created in main())
+    # We'll get them from the caller
+    # For now, create them here
+    strategies = create_strategies(config)
+    
+    # Create risk manager
+    risk_manager = RiskManager(config.risk, config.initial_capital)
+    
+    # Create backtest engine
+    engine = BacktestEngine(
+        strategies=strategies,
+        risk_manager=risk_manager,
+        initial_capital=config.initial_capital,
+        interval_minutes=5  # TODO: Get from config
+    )
+    
+    # Run backtest
+    logger.info("Starting backtest engine...")
+    results = engine.run(historical_data)
+    
+    # Calculate performance metrics
+    metrics = PerformanceMetrics(
+        initial_capital=results['initial_capital'],
+        final_capital=results['final_capital'],
+        trades=results['trades'],
+        portfolio=results['portfolio']
+    )
+    
+    # Generate report
+    report = BacktestReport(results, metrics)
+    
+    # Print summary
+    report.print_summary()
+    
+    # Print trade breakdown
+    if results['trades']:
+        report.print_trade_breakdown(max_trades=10)
+    
+    # Save results
+    json_path = report.save_to_json()
+    csv_path = report.save_trades_to_csv()
+    
+    logger.info(f"Results saved to: {json_path}")
+    if csv_path:
+        logger.info(f"Trades saved to: {csv_path}")
+    
+    logger.info("Backtest completed successfully")
 
 
 def run_paper_trading(config, symbols):
