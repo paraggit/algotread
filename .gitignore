@@ -1,0 +1,54 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+*.egg-info/
+dist/
+build/
+
+# uv
+.venv/
+uv.lock
+
+# Environment variables
+.env
+.env.local
+
+# Data files
+*.csv
+*.db
+*.sqlite
+*.sqlite3
+/data/
+historical_data/
+
+# Logs
+logs/
+*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# Trading specific
+trades/
+orders/
+backtest_results/
+
+# Virtual environments
+.venv

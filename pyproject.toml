@@ -1,0 +1,24 @@
+[project]
+name = "algotread"
+version = "0.1.0"
+description = "Add your description here"
+requires-python = ">=3.13"
+dependencies = [
+    "kiteconnect>=5.0.1",
+    "loguru>=0.7.3",
+    "numpy>=2.2.6",
+    "openai>=2.8.1",
+    "pandas>=2.3.3",
+    "pandas-ta>=0.4.71b0",
+    "pydantic>=2.12.4",
+    "python-dotenv>=1.2.1",
+    "python-telegram-bot>=22.5",
+    "websocket-client>=1.9.0",
+]
+
+[dependency-groups]
+dev = [
+    "mypy>=1.18.2",
+    "pytest>=9.0.1",
+    "pytest-cov>=7.0.0",
+]
