@@ -115,17 +115,17 @@ ENABLED_STRATEGIES=orb_supertrend,ema_trend
 
 **Backtest Mode** (recommended to start):
 ```bash
-uv run src/main.py --mode backtest --symbols RELIANCE,TCS --date 2024-01-15
+uv run -m src.main --mode backtest --symbols RELIANCE,TCS --date 2024-01-15
 ```
 
 **Paper Trading** (live data, no real orders):
 ```bash
-uv run src/main.py --mode paper --symbols NIFTY50
+uv run -m src.main --mode paper --symbols NIFTY50
 ```
 
 **Live Trading** (⚠️ use with extreme caution):
 ```bash
-uv run src/main.py --mode live --symbols BANKNIFTY
+uv run -m src.main --mode live --symbols BANKNIFTY
 ```
 
 ## 📁 Project Structure

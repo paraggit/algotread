@@ -2,9 +2,9 @@
 Main entry point for the automated trading system.
 
 Usage:
-    uv run src/main.py --mode backtest --symbols RELIANCE,TCS --date 2024-01-15
-    uv run src/main.py --mode paper --symbols NIFTY50
-    uv run src/main.py --mode live --symbols BANKNIFTY
+    uv run -m src.main --mode backtest --symbols RELIANCE,TCS --date 2024-01-15
+    uv run -m src.main --mode paper --symbols NIFTY50
+    uv run -m src.main --mode live --symbols BANKNIFTY
 """
 
 import argparse
@@ -168,13 +168,13 @@ def main():
         epilog="""
 Examples:
   # Backtest
-  uv run src/main.py --mode backtest --symbols RELIANCE,TCS --date 2024-01-15
+  uv run -m src.main --mode backtest --symbols RELIANCE,TCS --date 2024-01-15
   
   # Paper trading
-  uv run src/main.py --mode paper --symbols NIFTY50
+  uv run -m src.main --mode paper --symbols NIFTY50
   
   # Live trading (use with extreme caution!)
-  uv run src/main.py --mode live --symbols BANKNIFTY
+  uv run -m src.main --mode live --symbols BANKNIFTY
         """
     )
     
