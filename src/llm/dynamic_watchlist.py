@@ -263,58 +263,111 @@ Avoid:
         ]
 
 
-def fetch_news_headlines(sources: Optional[List[str]] = None) -> List[dict]:
+def fetch_news_headlines(
+    news_fetcher: Optional['NewsFetcher'] = None,
+    symbols: Optional[List[str]] = None,
+    sources: Optional[List[str]] = None
+) -> List[dict]:
     """
     Fetch news headlines from various sources.
     
-    TODO: Implement actual news fetching from:
-    - MoneyControl API
-    - Economic Times RSS
-    - NSE announcements
-    - Twitter/X financial news
-    - Google News Finance
-    
     Args:
+        news_fetcher: Optional NewsFetcher instance (will create if not provided)
+        symbols: Optional list of symbols to filter by
         sources: Optional list of news sources to fetch from
         
     Returns:
-        List of news headline dicts
+        List of news headline dicts compatible with DynamicWatchlistGenerator
     """
-    # Placeholder implementation
-    logger.warning("News fetching not yet implemented - using placeholder")
+    from src.data.news_fetcher import NewsFetcher
+    from src.config import get_config
     
-    # Example structure
-    return [
-        {
-            "headline": "Reliance Industries announces Q3 results, beats estimates",
-            "source": "MoneyControl",
-            "timestamp": datetime.now().isoformat(),
-            "url": "https://example.com/news/1"
-        },
-        {
-            "headline": "TCS wins major deal with European bank",
-            "source": "Economic Times",
-            "timestamp": datetime.now().isoformat(),
-            "url": "https://example.com/news/2"
-        },
-        # Add more headlines...
-    ]
+    if news_fetcher is None:
+        config = get_config()
+        news_fetcher = NewsFetcher(
+            cache_dir=config.news.cache_dir,
+            cache_ttl=config.news.cache_ttl,
+            max_age_hours=config.news.max_age_hours,
+            enabled_sources=sources or config.news.sources
+        )
+    
+    try:
+        articles = news_fetcher.fetch_news(symbols=symbols)
+        
+        # Convert NewsArticle objects to dict format expected by watchlist generator
+        headlines = []
+        for article in articles:
+            headlines.append({
+                "headline": article.title,
+                "source": article.source.value,
+                "timestamp": article.published_at.isoformat(),
+                "url": article.url,
+                "summary": article.summary or ""
+            })
+        
+        logger.info(f"Fetched {len(headlines)} news headlines")
+        return headlines
+        
+    except Exception as e:
+        logger.error(f"Error fetching news headlines: {e}")
+        return []
 
 
-def fetch_market_indices() -> dict:
+def fetch_market_indices(kite_client: Optional['KiteConnect'] = None) -> dict:
     """
     Fetch current market indices data.
     
-    TODO: Implement actual index data fetching from Kite or NSE API.
-    
+    Args:
+        kite_client: Optional KiteConnect client (will create if not provided)
+        
     Returns:
         Dictionary of index data
     """
-    # Placeholder implementation
-    logger.warning("Index data fetching not yet implemented - using placeholder")
+    from kiteconnect import KiteConnect
+    from src.config import get_config
     
+    if kite_client is None:
+        try:
+            config = get_config()
+            kite_client = KiteConnect(api_key=config.kite.api_key)
+            kite_client.set_access_token(config.kite.access_token)
+        except Exception as e:
+            logger.warning(f"Could not initialize Kite client: {e}")
+            return _get_placeholder_indices()
+    
+    try:
+        # Fetch index quotes from Kite
+        # NSE index instrument tokens
+        index_tokens = {
+            "NIFTY50": "NSE:NIFTY 50",
+            "BANKNIFTY": "NSE:NIFTY BANK",
+            "NIFTYIT": "NSE:NIFTY IT"
+        }
+        
+        indices_data = {}
+        quotes = kite_client.quote(list(index_tokens.values()))
+        
+        for index_name, symbol in index_tokens.items():
+            if symbol in quotes:
+                quote = quotes[symbol]
+                indices_data[index_name] = {
+                    "level": quote.get('last_price', 0),
+                    "change_pct": quote.get('change', 0)
+                }
+        
+        logger.info(f"Fetched data for {len(indices_data)} indices")
+        return indices_data
+        
+    except Exception as e:
+        logger.warning(f"Error fetching market indices: {e}, using placeholder data")
+        return _get_placeholder_indices()
+
+
+def _get_placeholder_indices() -> dict:
+    """Get placeholder index data when real data is unavailable."""
+    logger.debug("Using placeholder index data")
     return {
-        "NIFTY50": {"level": 19500, "change_pct": 0.5},
-        "BANKNIFTY": {"level": 44000, "change_pct": -0.3},
-        "NIFTYIT": {"level": 30000, "change_pct": 1.2}
+        "NIFTY50": {"level": 19500, "change_pct": 0.0},
+        "BANKNIFTY": {"level": 44000, "change_pct": 0.0},
+        "NIFTYIT": {"level": 30000, "change_pct": 0.0}
     }

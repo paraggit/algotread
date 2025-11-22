@@ -51,6 +51,49 @@ class Sentiment(str, Enum):
     NEUTRAL = "neutral"
 
 
+class NewsSource(str, Enum):
+    """News source classification."""
+    ECONOMIC_TIMES = "economic_times"
+    GOOGLE_NEWS = "google_news"
+    NSE_ANNOUNCEMENTS = "nse_announcements"
+    MONEYCONTROL = "moneycontrol"
+    UNKNOWN = "unknown"
+
+
+class NewsArticle(BaseModel):
+    """News article data."""
+    title: str
+    source: NewsSource
+    url: str
+    published_at: datetime
+    summary: Optional[str] = None
+    symbols: list[str] = Field(default_factory=list, description="Stock symbols mentioned")
+    content: Optional[str] = None
+    
+    def __hash__(self) -> int:
+        """Hash based on URL for deduplication."""
+        return hash(self.url)
+    
+    def __eq__(self, other: object) -> bool:
+        """Equality based on URL for deduplication."""
+        if not isinstance(other, NewsArticle):
+            return False
+        return self.url == other.url
+
+
+class StockResearch(BaseModel):
+    """Comprehensive stock research combining news and sentiment."""
+    symbol: str
+    timestamp: datetime
+    news_articles: list[NewsArticle] = Field(default_factory=list)
+    sentiment: Optional['SentimentAnalysis'] = None  # Forward reference
+    opportunity_score: float = Field(ge=0.0, le=1.0, description="Overall opportunity score")
+    key_catalysts: list[str] = Field(default_factory=list)
+    risk_factors: list[str] = Field(default_factory=list)
+    recommendation: str = Field(description="LLM recommendation summary")
+
+
+
 class OHLCVBar(BaseModel):
     """OHLCV candlestick bar."""
     timestamp: datetime

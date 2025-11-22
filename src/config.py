@@ -153,6 +153,39 @@ class DataConfig(BaseModel):
         )
 
 
+class NewsConfig(BaseModel):
+    """News fetching configuration."""
+    enabled: bool = Field(default=True, description="Enable news fetching")
+    sources: List[str] = Field(default_factory=lambda: ["economic_times", "google_news"], description="Enabled news sources")
+    cache_dir: str = Field(default="data/news_cache", description="News cache directory")
+    cache_ttl: int = Field(default=3600, ge=0, description="Cache TTL in seconds")
+    max_age_hours: int = Field(default=24, ge=1, description="Maximum age of news articles in hours")
+    fetch_interval: int = Field(default=60, ge=1, description="News fetch interval in minutes")
+    max_articles_per_source: int = Field(default=50, ge=1, description="Maximum articles per source")
+
+    @field_validator("sources", mode="before")
+    @classmethod
+    def parse_sources(cls, v):
+        """Parse comma-separated sources."""
+        if isinstance(v, str):
+            return [s.strip() for s in v.split(",") if s.strip()]
+        return v
+
+    @classmethod
+    def from_env(cls) -> "NewsConfig":
+        """Load from environment variables."""
+        return cls(
+            enabled=os.getenv("NEWS_ENABLED", "true").lower() == "true",
+            sources=os.getenv("NEWS_SOURCES", "economic_times,google_news"),
+            cache_dir=os.getenv("NEWS_CACHE_DIR", "data/news_cache"),
+            cache_ttl=int(os.getenv("NEWS_CACHE_TTL", "3600")),
+            max_age_hours=int(os.getenv("NEWS_MAX_AGE_HOURS", "24")),
+            fetch_interval=int(os.getenv("NEWS_FETCH_INTERVAL", "60")),
+            max_articles_per_source=int(os.getenv("NEWS_MAX_ARTICLES_PER_SOURCE", "50")),
+        )
+
+
+
 class TradingConfig(BaseModel):
     """Main trading configuration."""
     mode: TradingMode = Field(default=TradingMode.BACKTEST)
@@ -166,6 +199,7 @@ class TradingConfig(BaseModel):
     risk: RiskConfig
     strategy: StrategyConfig
     data: DataConfig
+    news: NewsConfig
 
     @field_validator("watchlist", mode="before")
     @classmethod
@@ -189,6 +223,7 @@ class TradingConfig(BaseModel):
             risk=RiskConfig.from_env(),
             strategy=StrategyConfig.from_env(),
             data=DataConfig.from_env(),
+            news=NewsConfig.from_env(),
         )
 
     def ensure_directories(self) -> None:

@@ -20,10 +20,12 @@ def main():
     # Create watchlist generator
     watchlist_gen = DynamicWatchlistGenerator(llm_client, max_stocks=10)
     
-    # Fetch news (TODO: implement actual news fetching)
+    # Fetch real news using news fetcher
+    print("Fetching news from multiple sources...")
     news_headlines = fetch_news_headlines()
     
-    # Fetch market indices (TODO: implement actual index fetching)
+    # Fetch market indices
+    print("Fetching market indices...")
     market_indices = fetch_market_indices()
     
     # Generate dynamic watchlist

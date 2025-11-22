@@ -18,8 +18,16 @@ A deterministic, rule-based intraday trading engine for Indian equities using Ze
 2. **EMA Trend Following**: EMA(9/21) crossover with VWAP filter
 3. **VWAP Mean Reversion**: Range-bound market strategy (regime-dependent)
 
-### Dynamic Watchlist (NEW!)
-- **News-Based Stock Selection**: LLM analyzes news to recommend intraday trading stocks
+### News Integration (NEW!)
+- **Multi-Source News Fetching**: Aggregates news from Economic Times RSS, Google News, and NSE announcements
+- **Smart Caching**: Efficient caching with configurable TTL to minimize API calls
+- **Stock Research**: Comprehensive analysis combining news, sentiment, and LLM insights
+- **Deduplication**: Automatic removal of duplicate articles across sources
+- **Symbol Extraction**: Automatically identifies stocks mentioned in news
+- See [News Integration Guide](docs/NEWS_INTEGRATION.md) for details
+
+### Dynamic Watchlist
+- **News-Based Stock Selection**: LLM analyzes real news to recommend intraday trading stocks
 - **Adaptive Filtering**: Focus on stocks with catalysts and momentum
 - **Risk & Direction Filters**: Filter by risk level and expected direction
 - **Configurable**: Set confidence thresholds, max stocks, sector focus
@@ -35,16 +43,17 @@ A deterministic, rule-based intraday trading engine for Indian equities using Ze
 - **Market Regime Classification**: Trending vs. range-bound detection
 - **Sentiment Analysis**: News analysis with risky event detection
 - **Dynamic Watchlist**: News-based stock recommendations
+- **Stock Research**: Comprehensive analysis with opportunity scoring
 - **Trade Journaling**: Post-trade analysis for learning
 
-### Telegram Notifications (NEW!)
+### Telegram Notifications
 - **Real-time Trade Alerts**: Instant notifications for every trade entry/exit
 - **Risk Alerts**: Warnings when risk limits are approached
 - **Daily Summary**: Comprehensive end-of-day trading report
 - **AI Insights**: LLM trade reviews included in notifications
 - See [Telegram Setup Guide](docs/TELEGRAM_NOTIFICATIONS.md) for details
 
-### Global Market Analysis (NEW!)
+### Global Market Analysis
 - **Pre-Market Context**: Analyze overnight US and Asian markets
 - **Strategy Bias**: Adjust trading approach based on global trends
 - **Risk Adjustment**: Modify position sizes based on global sentiment
