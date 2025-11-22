@@ -243,7 +243,7 @@ def run_paper_trading(config, symbols):
     
     for symbol in symbols:
         try:
-            token = fetcher._get_instrument_token(symbol)
+            token = fetcher._get_instrument_token(symbol, exchange="NSE")
             instrument_tokens[symbol] = token
             logger.info(f"Got instrument token for {symbol}: {token}")
         except Exception as e:
@@ -390,7 +390,7 @@ def run_live_trading(config, symbols):
     
     for symbol in symbols:
         try:
-            token = fetcher._get_instrument_token(symbol)
+            token = fetcher._get_instrument_token(symbol, exchange="NSE")
             instrument_tokens[symbol] = token
             logger.info(f"Got instrument token for {symbol}: {token}")
         except Exception as e:
