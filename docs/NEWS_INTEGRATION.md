@@ -4,6 +4,14 @@
 
 The AlgoTread trading system now includes comprehensive news integration to enhance stock research and dynamic watchlist generation. News data is fetched from multiple public sources and used **ONLY** for advisory purposes - it does NOT directly trigger trades.
 
+> [!IMPORTANT]
+> **Data Source Compliance**: All news sources use legitimate, publicly available data.
+> See [DATA_SOURCE_COMPLIANCE.md](DATA_SOURCE_COMPLIANCE.md) for detailed information about:
+> - Legitimacy of each data source
+> - Terms of service compliance
+> - How to disable sources if needed
+> - Best practices for respectful data usage
+
 ## News Sources
 
 The system supports the following news sources:

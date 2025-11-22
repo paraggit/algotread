@@ -1,0 +1,48 @@
+[Unit]
+Description=AlgoTread - Automated Intraday Trading System
+After=network.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=YOUR_USERNAME
+Group=YOUR_GROUP
+WorkingDirectory=/path/to/algotread
+Environment="PATH=/path/to/algotread/.venv/bin:/usr/local/bin:/usr/bin:/bin"
+Environment="PYTHONUNBUFFERED=1"
+
+# Load environment variables from .env file
+EnvironmentFile=/path/to/algotread/.env
+
+# Main command to run the trading system
+ExecStart=/path/to/algotread/.venv/bin/python -m src.main
+
+# Restart policy
+Restart=on-failure
+RestartSec=10
+StartLimitInterval=200
+StartLimitBurst=5
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=algotread
+
+# Security hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/path/to/algotread/data /path/to/algotread/logs
+
+# Resource limits
+MemoryLimit=2G
+CPUQuota=200%
+
+# Graceful shutdown
+TimeoutStopSec=30
+KillMode=mixed
+KillSignal=SIGTERM
+
+[Install]
+WantedBy=multi-user.target

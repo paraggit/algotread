@@ -150,7 +150,16 @@ class GoogleNewsAdapter(NewsSourceAdapter):
 
 
 class NSEAnnouncementsAdapter(NewsSourceAdapter):
-    """Adapter for NSE corporate announcements."""
+    """
+    Adapter for NSE corporate announcements.
+    
+    COMPLIANCE NOTE:
+    This adapter accesses publicly available corporate announcements from NSE.
+    While this data is public, please review NSE's terms of service for your use case.
+    See docs/DATA_SOURCE_COMPLIANCE.md for details.
+    
+    This source is OPTIONAL and can be disabled via NEWS_SOURCES configuration.
+    """
     
     # NSE API endpoints (may require headers to work)
     ANNOUNCEMENTS_URL = "https://www.nseindia.com/api/corporate-announcements"
